@@ -1,0 +1,4 @@
+/* Hover effects for remove buttons on palette swatches */
+div:hover > .remove-btn {
+  display: block !important;
+}

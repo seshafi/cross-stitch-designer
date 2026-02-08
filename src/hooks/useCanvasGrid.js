@@ -1,0 +1,411 @@
+import { useRef, useEffect, useCallback } from 'react';
+
+const MIN_CELL_SIZE = 1;
+const MAX_CELL_SIZE = 80;
+const GRID_LINE_THRESHOLD = 4;
+const STITCH_MARK_THRESHOLD = 12;
+const HEAVY_LINE_INTERVAL = 10;
+
+export function useCanvasGrid({
+  width: gridWidth,
+  height: gridHeight,
+  grid,
+  palette,
+  showGrid,
+  tool,
+  activePaletteIndex,
+  onCellPaint,
+  onCellErase,
+  onFloodFill,
+  onBatchUpdate,
+}) {
+  const canvasRef = useRef(null);
+  const observerRef = useRef(null);
+  const stateRef = useRef({
+    cellSize: 15,
+    offsetX: 0,
+    offsetY: 0,
+    isPanning: false,
+    isPainting: false,
+    panStartX: 0,
+    panStartY: 0,
+    panOffsetStartX: 0,
+    panOffsetStartY: 0,
+    lastPaintX: -1,
+    lastPaintY: -1,
+    paintedCells: null,
+    canvasWidth: 0,
+    canvasHeight: 0,
+    dpr: 1,
+    hasInitialFit: false,
+  });
+
+  const gridRef = useRef(grid);
+  const rafRef = useRef(null);
+
+  // Keep refs to latest callbacks to avoid stale closures
+  const callbacksRef = useRef({ onFloodFill, onBatchUpdate, tool, activePaletteIndex, palette });
+  callbacksRef.current = { onFloodFill, onBatchUpdate, tool, activePaletteIndex, palette };
+
+  // Keep grid dimensions in a ref for the draw function
+  const dimsRef = useRef({ gridWidth, gridHeight });
+  dimsRef.current = { gridWidth, gridHeight };
+
+  const showGridRef = useRef(showGrid);
+  showGridRef.current = showGrid;
+
+  const paletteRef = useRef(palette);
+  paletteRef.current = palette;
+
+  useEffect(() => {
+    gridRef.current = grid;
+  }, [grid]);
+
+  const draw = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const s = stateRef.current;
+    const { cellSize, offsetX, offsetY, canvasWidth, canvasHeight, dpr } = s;
+    const g = gridRef.current;
+    const { gridWidth: gw, gridHeight: gh } = dimsRef.current;
+    const pal = paletteRef.current;
+    const sg = showGridRef.current;
+
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, canvasWidth, canvasHeight);
+
+    const startCol = Math.max(0, Math.floor(-offsetX / cellSize));
+    const endCol = Math.min(gw, Math.ceil((canvasWidth - offsetX) / cellSize));
+    const startRow = Math.max(0, Math.floor(-offsetY / cellSize));
+    const endRow = Math.min(gh, Math.ceil((canvasHeight - offsetY) / cellSize));
+
+    if (startCol >= endCol || startRow >= endRow) return;
+
+    // Draw background for visible grid area
+    const gridPixelX = offsetX + startCol * cellSize;
+    const gridPixelY = offsetY + startRow * cellSize;
+    const gridPixelW = (endCol - startCol) * cellSize;
+    const gridPixelH = (endRow - startRow) * cellSize;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(gridPixelX, gridPixelY, gridPixelW, gridPixelH);
+
+    // Batch cells by color to minimize fillStyle changes
+    const colorBuckets = new Map();
+    for (let row = startRow; row < endRow; row++) {
+      for (let col = startCol; col < endCol; col++) {
+        const val = g[row * gw + col];
+        if (val > 0 && val <= pal.length) {
+          if (!colorBuckets.has(val)) colorBuckets.set(val, []);
+          colorBuckets.get(val).push(col, row);
+        }
+      }
+    }
+
+    for (const [colorIdx, coords] of colorBuckets) {
+      const color = pal[colorIdx - 1];
+      if (!color) continue;
+      ctx.fillStyle = color.hex;
+      for (let i = 0; i < coords.length; i += 2) {
+        const cx = coords[i];
+        const cy = coords[i + 1];
+        ctx.fillRect(
+          offsetX + cx * cellSize,
+          offsetY + cy * cellSize,
+          cellSize,
+          cellSize,
+        );
+      }
+    }
+
+    // Stitch marks when zoomed in
+    if (cellSize >= STITCH_MARK_THRESHOLD) {
+      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+      ctx.lineWidth = Math.max(1, cellSize / 12);
+      const pad = cellSize * 0.2;
+      for (const [, coords] of colorBuckets) {
+        for (let i = 0; i < coords.length; i += 2) {
+          const cx = coords[i];
+          const cy = coords[i + 1];
+          const px = offsetX + cx * cellSize;
+          const py = offsetY + cy * cellSize;
+          ctx.beginPath();
+          ctx.moveTo(px + pad, py + pad);
+          ctx.lineTo(px + cellSize - pad, py + cellSize - pad);
+          ctx.moveTo(px + cellSize - pad, py + pad);
+          ctx.lineTo(px + pad, py + cellSize - pad);
+          ctx.stroke();
+        }
+      }
+    }
+
+    // Grid lines
+    if (sg && cellSize >= GRID_LINE_THRESHOLD) {
+      ctx.lineWidth = 0.5;
+      ctx.strokeStyle = 'rgba(0,0,0,0.15)';
+      ctx.beginPath();
+      for (let col = startCol; col <= endCol; col++) {
+        if (col % HEAVY_LINE_INTERVAL === 0) continue;
+        const x = offsetX + col * cellSize;
+        ctx.moveTo(x, gridPixelY);
+        ctx.lineTo(x, gridPixelY + gridPixelH);
+      }
+      for (let row = startRow; row <= endRow; row++) {
+        if (row % HEAVY_LINE_INTERVAL === 0) continue;
+        const y = offsetY + row * cellSize;
+        ctx.moveTo(gridPixelX, y);
+        ctx.lineTo(gridPixelX + gridPixelW, y);
+      }
+      ctx.stroke();
+
+      // Heavy lines every 10
+      ctx.lineWidth = 1;
+      ctx.strokeStyle = 'rgba(0,0,0,0.4)';
+      ctx.beginPath();
+      for (let col = startCol; col <= endCol; col++) {
+        if (col % HEAVY_LINE_INTERVAL !== 0) continue;
+        const x = offsetX + col * cellSize;
+        ctx.moveTo(x, gridPixelY);
+        ctx.lineTo(x, gridPixelY + gridPixelH);
+      }
+      for (let row = startRow; row <= endRow; row++) {
+        if (row % HEAVY_LINE_INTERVAL !== 0) continue;
+        const y = offsetY + row * cellSize;
+        ctx.moveTo(gridPixelX, y);
+        ctx.lineTo(gridPixelX + gridPixelW, y);
+      }
+      ctx.stroke();
+    }
+
+    // Border around entire grid
+    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(offsetX, offsetY, gw * cellSize, gh * cellSize);
+  }, []); // stable — reads from refs
+
+  const requestDraw = useCallback(() => {
+    if (rafRef.current) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      draw();
+    });
+  }, [draw]);
+
+  // Convert canvas coords to grid cell
+  const canvasToCell = useCallback((clientX, clientY) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return null;
+    const rect = canvas.getBoundingClientRect();
+    const s = stateRef.current;
+    const { gridWidth: gw, gridHeight: gh } = dimsRef.current;
+    const x = (clientX - rect.left - s.offsetX) / s.cellSize;
+    const y = (clientY - rect.top - s.offsetY) / s.cellSize;
+    const col = Math.floor(x);
+    const row = Math.floor(y);
+    if (col < 0 || col >= gw || row < 0 || row >= gh) return null;
+    return { x: col, y: row };
+  }, []);
+
+  const paintCell = useCallback((x, y) => {
+    const s = stateRef.current;
+    if (x === s.lastPaintX && y === s.lastPaintY) return;
+    s.lastPaintX = x;
+    s.lastPaintY = y;
+
+    const g = gridRef.current;
+    const { tool: t, activePaletteIndex: api, palette: pal } = callbacksRef.current;
+    const { gridWidth: gw } = dimsRef.current;
+    const colorIndex = api + 1;
+
+    if (t === 'paint') {
+      if (pal.length === 0) return;
+      if (g[y * gw + x] === colorIndex) return;
+      g[y * gw + x] = colorIndex;
+      if (s.paintedCells) s.paintedCells.add(`${x},${y}`);
+      requestDraw();
+    } else if (t === 'erase') {
+      if (g[y * gw + x] === 0) return;
+      g[y * gw + x] = 0;
+      if (s.paintedCells) s.paintedCells.add(`${x},${y}`);
+      requestDraw();
+    }
+  }, [requestDraw]);
+
+  // Mouse handlers — all stable via refs
+  const handleMouseDown = useCallback((e) => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const s = stateRef.current;
+    const { tool: t, onFloodFill: fill } = callbacksRef.current;
+
+    // Middle click or shift+left click = pan
+    if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+      e.preventDefault();
+      s.isPanning = true;
+      s.panStartX = e.clientX;
+      s.panStartY = e.clientY;
+      s.panOffsetStartX = s.offsetX;
+      s.panOffsetStartY = s.offsetY;
+      canvas.style.cursor = 'grabbing';
+      return;
+    }
+
+    // Left click = paint/erase/fill
+    if (e.button === 0) {
+      const cell = canvasToCell(e.clientX, e.clientY);
+      if (!cell) return;
+
+      if (t === 'fill') {
+        fill(cell.x, cell.y);
+        return;
+      }
+
+      s.isPainting = true;
+      s.lastPaintX = -1;
+      s.lastPaintY = -1;
+      s.paintedCells = new Set();
+      paintCell(cell.x, cell.y);
+    }
+  }, [canvasToCell, paintCell]);
+
+  const handleMouseMove = useCallback((e) => {
+    const s = stateRef.current;
+
+    if (s.isPanning) {
+      s.offsetX = s.panOffsetStartX + (e.clientX - s.panStartX);
+      s.offsetY = s.panOffsetStartY + (e.clientY - s.panStartY);
+      requestDraw();
+      return;
+    }
+
+    if (s.isPainting) {
+      const cell = canvasToCell(e.clientX, e.clientY);
+      if (cell) paintCell(cell.x, cell.y);
+    }
+  }, [canvasToCell, paintCell, requestDraw]);
+
+  const handleMouseUp = useCallback(() => {
+    const canvas = canvasRef.current;
+    const s = stateRef.current;
+
+    if (s.isPanning) {
+      s.isPanning = false;
+      if (canvas) canvas.style.cursor = '';
+      return;
+    }
+
+    if (s.isPainting) {
+      s.isPainting = false;
+      if (s.paintedCells && s.paintedCells.size > 0) {
+        callbacksRef.current.onBatchUpdate(gridRef.current);
+      }
+      s.paintedCells = null;
+    }
+  }, []);
+
+  const handleWheel = useCallback((e) => {
+    e.preventDefault();
+    const s = stateRef.current;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const oldCellSize = s.cellSize;
+    const zoomFactor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+    const newCellSize = Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, oldCellSize * zoomFactor));
+
+    const worldX = (mouseX - s.offsetX) / oldCellSize;
+    const worldY = (mouseY - s.offsetY) / oldCellSize;
+    s.cellSize = newCellSize;
+    s.offsetX = mouseX - worldX * newCellSize;
+    s.offsetY = mouseY - worldY * newCellSize;
+
+    requestDraw();
+  }, [requestDraw]);
+
+  const handleContextMenu = useCallback((e) => {
+    e.preventDefault();
+  }, []);
+
+  // Fit grid to canvas
+  const fitToScreen = useCallback(() => {
+    const s = stateRef.current;
+    const { gridWidth: gw, gridHeight: gh } = dimsRef.current;
+    const padding = 40;
+    const availW = s.canvasWidth - padding * 2;
+    const availH = s.canvasHeight - padding * 2;
+    if (availW <= 0 || availH <= 0) return;
+    const cellW = availW / gw;
+    const cellH = availH / gh;
+    s.cellSize = Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, Math.min(cellW, cellH)));
+    s.offsetX = (s.canvasWidth - gw * s.cellSize) / 2;
+    s.offsetY = (s.canvasHeight - gh * s.cellSize) / 2;
+    requestDraw();
+  }, [requestDraw]);
+
+  // Setup canvas size and ResizeObserver
+  const setupCanvas = useCallback((canvas) => {
+    if (!canvas) return;
+    canvasRef.current = canvas;
+    const s = stateRef.current;
+    const dpr = window.devicePixelRatio || 1;
+    s.dpr = dpr;
+
+    // Clean up previous observer
+    if (observerRef.current) {
+      observerRef.current.disconnect();
+    }
+
+    const updateSize = () => {
+      const rect = canvas.getBoundingClientRect();
+      s.canvasWidth = rect.width;
+      s.canvasHeight = rect.height;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      requestDraw();
+    };
+
+    const observer = new ResizeObserver(updateSize);
+    observerRef.current = observer;
+    observer.observe(canvas);
+    updateSize();
+
+    // Initial fit
+    if (!s.hasInitialFit) {
+      s.hasInitialFit = true;
+      fitToScreen();
+    }
+  }, [requestDraw, fitToScreen]);
+
+  // Re-draw when dependencies change
+  useEffect(() => {
+    requestDraw();
+  }, [grid, palette, showGrid, requestDraw]);
+
+  // Recenter when grid dimensions change
+  useEffect(() => {
+    fitToScreen();
+  }, [gridWidth, gridHeight, fitToScreen]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (observerRef.current) observerRef.current.disconnect();
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  return {
+    canvasRef,
+    setupCanvas,
+    handleMouseDown,
+    handleMouseMove,
+    handleMouseUp,
+    handleWheel,
+    handleContextMenu,
+    fitToScreen,
+  };
+}
