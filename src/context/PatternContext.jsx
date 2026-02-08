@@ -6,6 +6,7 @@ const PatternDispatchContext = createContext(null);
 
 const DEFAULT_WIDTH = 50;
 const DEFAULT_HEIGHT = 50;
+const MAX_UNDO = 50;
 
 function createInitialState() {
   return {
@@ -22,6 +23,21 @@ function createInitialState() {
     tool: 'paint',
     showGrid: true,
     dirty: false,
+    undoStack: [],
+    redoStack: [],
+  };
+}
+
+function pushUndo(state, gridOverride) {
+  const entry = {
+    grid: new Uint16Array(gridOverride || state.grid),
+    palette: [...state.palette],
+    width: state.width,
+    height: state.height,
+  };
+  return {
+    undoStack: [...state.undoStack.slice(-(MAX_UNDO - 1)), entry],
+    redoStack: [],
   };
 }
 
@@ -62,7 +78,7 @@ function patternReducer(state, action) {
       const newPalette = state.palette.filter((_, i) => i !== removeIdx);
       let newActive = state.activePaletteIndex;
       if (newActive >= newPalette.length) newActive = Math.max(0, newPalette.length - 1);
-      return { ...state, palette: newPalette, grid: newGrid, activePaletteIndex: newActive, dirty: true };
+      return { ...state, palette: newPalette, grid: newGrid, activePaletteIndex: newActive, dirty: true, ...pushUndo(state) };
     }
 
     case 'SET_CELL': {
@@ -76,11 +92,11 @@ function patternReducer(state, action) {
 
     case 'SET_CELLS': {
       const newGrid = new Uint16Array(action.grid);
-      return { ...state, grid: newGrid, dirty: true };
+      return { ...state, grid: newGrid, dirty: true, ...pushUndo(state, action.previousGrid) };
     }
 
     case 'UPDATE_GRID': {
-      return { ...state, grid: action.grid, dirty: true };
+      return { ...state, grid: action.grid, dirty: true, ...pushUndo(state) };
     }
 
     case 'TOGGLE_GRID':
@@ -101,6 +117,8 @@ function patternReducer(state, action) {
         modifiedAt,
         activePaletteIndex: 0,
         dirty: false,
+        undoStack: [],
+        redoStack: [],
       };
     }
 
@@ -118,7 +136,7 @@ function patternReducer(state, action) {
 
     case 'RESIZE_GRID': {
       const { width: newW, height: newH, grid: resizedGrid } = action;
-      return { ...state, width: newW, height: newH, grid: resizedGrid, dirty: true };
+      return { ...state, width: newW, height: newH, grid: resizedGrid, dirty: true, ...pushUndo(state) };
     }
 
     case 'SET_NAME':
@@ -129,6 +147,50 @@ function patternReducer(state, action) {
 
     case 'MARK_SAVED':
       return { ...state, id: action.id, dirty: false, modifiedAt: Date.now() };
+
+    case 'UNDO': {
+      if (state.undoStack.length === 0) return state;
+      const prev = state.undoStack[state.undoStack.length - 1];
+      const currentEntry = {
+        grid: new Uint16Array(state.grid),
+        palette: [...state.palette],
+        width: state.width,
+        height: state.height,
+      };
+      return {
+        ...state,
+        grid: prev.grid,
+        palette: prev.palette,
+        width: prev.width,
+        height: prev.height,
+        activePaletteIndex: Math.min(state.activePaletteIndex, Math.max(0, prev.palette.length - 1)),
+        undoStack: state.undoStack.slice(0, -1),
+        redoStack: [...state.redoStack, currentEntry],
+        dirty: true,
+      };
+    }
+
+    case 'REDO': {
+      if (state.redoStack.length === 0) return state;
+      const next = state.redoStack[state.redoStack.length - 1];
+      const currentEntry = {
+        grid: new Uint16Array(state.grid),
+        palette: [...state.palette],
+        width: state.width,
+        height: state.height,
+      };
+      return {
+        ...state,
+        grid: next.grid,
+        palette: next.palette,
+        width: next.width,
+        height: next.height,
+        activePaletteIndex: Math.min(state.activePaletteIndex, Math.max(0, next.palette.length - 1)),
+        undoStack: [...state.undoStack, currentEntry],
+        redoStack: state.redoStack.slice(0, -1),
+        dirty: true,
+      };
+    }
 
     default:
       return state;

@@ -27,8 +27,8 @@ export default function GridCanvas({ fitRef }) {
     }
   }, [grid, width, height, palette, activePaletteIndex, tool, dispatch]);
 
-  const onBatchUpdate = useCallback((gridData) => {
-    dispatch({ type: 'SET_CELLS', grid: gridData });
+  const onBatchUpdate = useCallback((gridData, previousGrid) => {
+    dispatch({ type: 'SET_CELLS', grid: gridData, previousGrid });
   }, [dispatch]);
 
   const {

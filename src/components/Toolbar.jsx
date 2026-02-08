@@ -6,7 +6,7 @@ const TOOLS = [
   { id: 'fill', label: 'Fill', shortcut: 'F', icon: '◆' },
 ];
 
-export default function Toolbar({ onFitToScreen, onToggleGrid }) {
+export default function Toolbar({ onFitToScreen, onToggleGrid, onUndo, onRedo, canUndo, canRedo }) {
   const { tool, showGrid } = usePattern();
   const dispatch = usePatternDispatch();
 
@@ -35,6 +35,37 @@ export default function Toolbar({ onFitToScreen, onToggleGrid }) {
           {t.icon} {t.label}
         </button>
       ))}
+      <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 4px' }} />
+      <button
+        onClick={onUndo}
+        disabled={!canUndo}
+        title="Undo (Ctrl+Z)"
+        style={{
+          padding: '4px 10px',
+          borderRadius: 4,
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border)',
+          fontSize: 13,
+          opacity: canUndo ? 1 : 0.4,
+        }}
+      >
+        Undo
+      </button>
+      <button
+        onClick={onRedo}
+        disabled={!canRedo}
+        title="Redo (Ctrl+Shift+Z)"
+        style={{
+          padding: '4px 10px',
+          borderRadius: 4,
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border)',
+          fontSize: 13,
+          opacity: canRedo ? 1 : 0.4,
+        }}
+      >
+        Redo
+      </button>
       <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 4px' }} />
       <button
         onClick={onToggleGrid}

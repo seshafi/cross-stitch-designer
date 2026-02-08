@@ -12,7 +12,7 @@ import { useLocalStorage } from './hooks/useLocalStorage.js';
 import './App.css';
 
 function AppInner() {
-  const { dirty, name } = usePattern();
+  const { dirty, name, undoStack, redoStack } = usePattern();
   const dispatch = usePatternDispatch();
   const fitRef = useRef(null);
   const [inventory, setInventory] = useLocalStorage('xstitch-inventory', []);
@@ -26,11 +26,37 @@ function AppInner() {
     dispatch({ type: 'TOGGLE_GRID' });
   }, [dispatch]);
 
+  const handleUndo = useCallback(() => {
+    dispatch({ type: 'UNDO' });
+  }, [dispatch]);
+
+  const handleRedo = useCallback(() => {
+    dispatch({ type: 'REDO' });
+  }, [dispatch]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handler = (e) => {
       // Don't handle shortcuts when typing in inputs
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+
+      // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y for undo/redo
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === 'z' || e.key === 'Z') {
+          e.preventDefault();
+          if (e.shiftKey) {
+            dispatch({ type: 'REDO' });
+          } else {
+            dispatch({ type: 'UNDO' });
+          }
+          return;
+        }
+        if (e.key === 'y') {
+          e.preventDefault();
+          dispatch({ type: 'REDO' });
+          return;
+        }
+      }
 
       switch (e.key.toLowerCase()) {
         case 'p':
@@ -84,7 +110,14 @@ function AppInner() {
       }}>
         Cross-Stitch Designer
       </div>
-      <Toolbar onFitToScreen={handleFitToScreen} onToggleGrid={handleToggleGrid} />
+      <Toolbar
+        onFitToScreen={handleFitToScreen}
+        onToggleGrid={handleToggleGrid}
+        onUndo={handleUndo}
+        onRedo={handleRedo}
+        canUndo={undoStack.length > 0}
+        canRedo={redoStack.length > 0}
+      />
       <div style={{ marginLeft: 'auto', paddingRight: 12, display: 'flex', gap: 8 }}>
         <button
           onClick={() => setShowPreview(true)}

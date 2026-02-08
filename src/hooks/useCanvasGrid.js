@@ -264,6 +264,7 @@ export function useCanvasGrid({
       s.lastPaintX = -1;
       s.lastPaintY = -1;
       s.paintedCells = new Set();
+      s.gridBeforePaint = new Uint16Array(gridRef.current);
       paintCell(cell.x, cell.y);
     }
   }, [canvasToCell, paintCell]);
@@ -297,9 +298,10 @@ export function useCanvasGrid({
     if (s.isPainting) {
       s.isPainting = false;
       if (s.paintedCells && s.paintedCells.size > 0) {
-        callbacksRef.current.onBatchUpdate(gridRef.current);
+        callbacksRef.current.onBatchUpdate(gridRef.current, s.gridBeforePaint);
       }
       s.paintedCells = null;
+      s.gridBeforePaint = null;
     }
   }, []);
 
