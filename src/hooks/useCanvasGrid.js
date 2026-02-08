@@ -346,18 +346,21 @@ export function useCanvasGrid({
     requestDraw();
   }, [requestDraw]);
 
-  // Setup canvas size and ResizeObserver
+  // Setup canvas ref only — sizing/observer managed by effect below
   const setupCanvas = useCallback((canvas) => {
     if (!canvas) return;
     canvasRef.current = canvas;
+  }, []);
+
+  // Canvas sizing and ResizeObserver — managed as a proper effect so
+  // React StrictMode's cleanup/re-run cycle works correctly
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
     const s = stateRef.current;
     const dpr = window.devicePixelRatio || 1;
     s.dpr = dpr;
-
-    // Clean up previous observer
-    if (observerRef.current) {
-      observerRef.current.disconnect();
-    }
 
     const updateSize = () => {
       const rect = canvas.getBoundingClientRect();
@@ -373,11 +376,18 @@ export function useCanvasGrid({
     observer.observe(canvas);
     updateSize();
 
-    // Initial fit
     if (!s.hasInitialFit) {
       s.hasInitialFit = true;
       fitToScreen();
     }
+
+    return () => {
+      observer.disconnect();
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+    };
   }, [requestDraw, fitToScreen]);
 
   // Re-draw when dependencies change
@@ -389,14 +399,6 @@ export function useCanvasGrid({
   useEffect(() => {
     fitToScreen();
   }, [gridWidth, gridHeight, fitToScreen]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      if (observerRef.current) observerRef.current.disconnect();
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
-    };
-  }, []);
 
   return {
     canvasRef,
