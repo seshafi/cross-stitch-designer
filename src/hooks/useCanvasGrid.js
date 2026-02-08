@@ -311,19 +311,26 @@ export function useCanvasGrid({
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
+    if (e.ctrlKey || e.metaKey) {
+      // Pinch-to-zoom (trackpad) or Ctrl+scroll (mouse)
+      const rect = canvas.getBoundingClientRect();
+      const mouseX = e.clientX - rect.left;
+      const mouseY = e.clientY - rect.top;
 
-    const oldCellSize = s.cellSize;
-    const zoomFactor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
-    const newCellSize = Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, oldCellSize * zoomFactor));
+      const oldCellSize = s.cellSize;
+      const zoomFactor = e.deltaY < 0 ? 1.1 : 1 / 1.1;
+      const newCellSize = Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, oldCellSize * zoomFactor));
 
-    const worldX = (mouseX - s.offsetX) / oldCellSize;
-    const worldY = (mouseY - s.offsetY) / oldCellSize;
-    s.cellSize = newCellSize;
-    s.offsetX = mouseX - worldX * newCellSize;
-    s.offsetY = mouseY - worldY * newCellSize;
+      const worldX = (mouseX - s.offsetX) / oldCellSize;
+      const worldY = (mouseY - s.offsetY) / oldCellSize;
+      s.cellSize = newCellSize;
+      s.offsetX = mouseX - worldX * newCellSize;
+      s.offsetY = mouseY - worldY * newCellSize;
+    } else {
+      // Two-finger scroll = pan
+      s.offsetX -= e.deltaX;
+      s.offsetY -= e.deltaY;
+    }
 
     requestDraw();
   }, [requestDraw]);
