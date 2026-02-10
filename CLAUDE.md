@@ -31,7 +31,7 @@ A web app for designing cross-stitch patterns. Think of it like a specialized pi
 
 - **Context + useReducer** (`PatternContext.jsx`) — single source of truth for pattern state
 - Separate dispatch context to avoid unnecessary re-renders
-- Pattern state includes: grid data, palette, active tool, grid dimensions, dirty flag
+- Pattern state includes: grid data, palette, active tool, grid dimensions, dirty flag, undo/redo stacks
 - Thread inventory managed separately via `useLocalStorage` hook in App
 
 ### Grid Data Model
@@ -50,8 +50,8 @@ This is the most complex part of the codebase. Key design decisions:
 - **Mutable refs for interaction state**: pan/paint state lives in `stateRef` (not React state) to avoid re-renders during drag operations
 - **Stable callbacks**: all mouse handlers use `useCallback([])` with refs to latest values, preventing re-bindingCanvasRenderingContext2D
 - **requestAnimationFrame coalescing**: `requestDraw()` deduplicates via `rafRef`
-- **Wheel events**: attached via `addEventListener` with `{ passive: false }` (React synthetic wheel events are passive and can't `preventDefault`)
-- **ResizeObserver** manages canvas sizing with DPR-aware pixel dimensions
+- **Wheel events**: attached via `addEventListener` with `{ passive: false }` (React synthetic wheel events are passive and can't `preventDefault`). Pinch/Ctrl+scroll = zoom, two-finger scroll = pan.
+- **ResizeObserver** managed in a `useEffect` (not the callback ref) so React StrictMode's cleanup/re-run cycle properly recreates it and resets `rafRef.current`
 
 ### Rendering Details
 
@@ -61,10 +61,10 @@ This is the most complex part of the codebase. Key design decisions:
 
 ### Tools
 
-- **Paint** (P): draw with active palette color, mutates grid ref directly during drag, dispatches batch update on mouseUp
+- **Paint** (P): draw with active palette color, mutates grid ref directly during drag, dispatches batch update on mouseUp. Saves a `gridBeforePaint` snapshot at mouseDown for undo.
 - **Erase** (E): same as paint but sets cells to 0
 - **Fill** (F): flood fill using stack-based algorithm (`src/utils/floodFill.js`)
-- **Pan**: middle-click or shift+left-click
+- **Pan**: middle-click, shift+left-click, or two-finger trackpad scroll
 
 ### Persistence
 
@@ -83,7 +83,7 @@ src/
   main.jsx                   # Entry point
   components/
     Layout.jsx               # CSS Grid shell: header, left/right sidebars, canvas area
-    Toolbar.jsx              # Tool buttons (paint/erase/fill), grid toggle, fit-to-screen
+    Toolbar.jsx              # Tool buttons (paint/erase/fill), undo/redo, grid toggle, fit-to-screen
     GridCanvas.jsx           # Canvas element + event wiring, bridges context to useCanvasGrid
     ColorPalette.jsx         # Active palette display + DMC color picker/search
     ColorSwatch.jsx          # Single color button with selection/indicator states
@@ -92,7 +92,7 @@ src/
     PatternSettings.jsx      # Pattern name, grid resize, notes
     PreviewModal.jsx         # Full preview with color legend and stitch counts
   context/
-    PatternContext.jsx       # useReducer state: grid, palette, tool, dimensions, dirty flag
+    PatternContext.jsx       # useReducer state: grid, palette, tool, dimensions, dirty flag, undo/redo stacks
   hooks/
     useCanvasGrid.js         # All canvas rendering + interaction logic
     useLocalStorage.js       # Generic localStorage-backed useState
@@ -104,12 +104,21 @@ src/
     dmcColors.js             # ~451 DMC thread colors: { dmc, name, hex }
 ```
 
+### Undo/Redo
+
+- Up to 50 undo levels stored as `{ grid, palette, width, height }` snapshots
+- Undoable actions: `SET_CELLS` (paint/erase strokes), `UPDATE_GRID` (flood fill), `RESIZE_GRID`, `REMOVE_PALETTE_COLOR`
+- `SET_CELLS` uses `action.previousGrid` (snapshot from mouseDown) because painting mutates `state.grid` in place via refs — the reducer can't use `state.grid` for the undo snapshot
+- Stacks cleared on `NEW_PATTERN` and `SET_PATTERN` (load)
+
 ## Keyboard Shortcuts
 
 - **P** — Paint tool
 - **E** — Erase tool
 - **F** — Fill tool
 - **G** — Toggle grid lines
+- **Ctrl+Z** — Undo
+- **Ctrl+Shift+Z** / **Ctrl+Y** — Redo
 
 Shortcuts are ignored when focus is in an input/textarea/select.
 
@@ -121,3 +130,8 @@ Shortcuts are ignored when focus is in an input/textarea/select.
 - No test framework configured
 - Components are default-exported; hooks and utilities are named exports
 - DMC color data is a static array, not fetched from an API
+
+## Known Gotchas
+
+- **StrictMode + canvas**: ResizeObserver and rAF cleanup must reset `rafRef.current = null`, otherwise StrictMode's effect double-fire permanently blocks `requestDraw()`. Observer must live in a `useEffect` (not callback ref) so it's recreated on re-mount.
+- **Paint stroke undo**: painting mutates `gridRef.current` (same object as `state.grid`) in place for performance. The undo snapshot must be captured at mouseDown and passed via the dispatch — the reducer cannot use `state.grid` because it's already been mutated by the time `SET_CELLS` fires.
