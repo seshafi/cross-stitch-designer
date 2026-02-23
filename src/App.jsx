@@ -9,15 +9,35 @@ import PatternSettings from './components/PatternSettings.jsx';
 import InventoryManager from './components/InventoryManager.jsx';
 import PreviewModal from './components/PreviewModal.jsx';
 import { useLocalStorage } from './hooks/useLocalStorage.js';
+import { savePattern } from './utils/storage.js';
+import { gridToArray } from './utils/gridHelpers.js';
 import './App.css';
 
 function AppInner() {
-  const { dirty, name, undoStack, redoStack } = usePattern();
+  const patternState = usePattern();
+  const { dirty, name, undoStack, redoStack } = patternState;
   const dispatch = usePatternDispatch();
   const fitRef = useRef(null);
   const zoomRef = useRef(null);
   const [inventory, setInventory] = useLocalStorage('xstitch-inventory', []);
   const [showPreview, setShowPreview] = useState(false);
+
+  const handleSave = useCallback(() => {
+    const s = patternState;
+    const id = s.id || `pattern_${Date.now()}`;
+    const ok = savePattern({
+      id,
+      name: s.name,
+      width: s.width,
+      height: s.height,
+      notes: s.notes,
+      palette: s.palette,
+      grid: gridToArray(s.grid),
+      createdAt: s.createdAt,
+      modifiedAt: Date.now(),
+    });
+    if (ok) dispatch({ type: 'MARK_SAVED', id });
+  }, [patternState, dispatch]);
 
   const handleFitToScreen = useCallback(() => {
     if (fitRef.current) fitRef.current();
@@ -49,7 +69,7 @@ function AppInner() {
       // Don't handle shortcuts when typing in inputs
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
 
-      // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y for undo/redo
+      // Ctrl+Z / Ctrl+Shift+Z / Ctrl+Y / Ctrl+S
       if (e.ctrlKey || e.metaKey) {
         if (e.key === 'z' || e.key === 'Z') {
           e.preventDefault();
@@ -63,6 +83,11 @@ function AppInner() {
         if (e.key === 'y') {
           e.preventDefault();
           dispatch({ type: 'REDO' });
+          return;
+        }
+        if (e.key === 's') {
+          e.preventDefault();
+          handleSave();
           return;
         }
       }
@@ -88,7 +113,7 @@ function AppInner() {
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [dispatch, handleToggleGrid]);
+  }, [dispatch, handleToggleGrid, handleSave]);
 
   // Unsaved changes warning
   useEffect(() => {

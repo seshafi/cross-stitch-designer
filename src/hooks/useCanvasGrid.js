@@ -38,6 +38,7 @@ export function useCanvasGrid({
     canvasHeight: 0,
     dpr: 1,
     hasInitialFit: false,
+    cursor: null, // { x, y } keyboard cursor position
   });
 
   const gridRef = useRef(grid);
@@ -181,6 +182,20 @@ export function useCanvasGrid({
     ctx.strokeStyle = 'rgba(0,0,0,0.5)';
     ctx.lineWidth = 1;
     ctx.strokeRect(offsetX, offsetY, gw * cellSize, gh * cellSize);
+
+    // Keyboard cursor highlight (hidden in fill mode)
+    const cur = s.cursor;
+    if (cur && callbacksRef.current.tool !== 'fill' && cur.x >= startCol && cur.x < endCol && cur.y >= startRow && cur.y < endRow) {
+      const lw = Math.max(2, Math.min(4, cellSize / 6));
+      ctx.strokeStyle = '#2196F3';
+      ctx.lineWidth = lw;
+      ctx.strokeRect(
+        offsetX + cur.x * cellSize + lw / 2,
+        offsetY + cur.y * cellSize + lw / 2,
+        cellSize - lw,
+        cellSize - lw,
+      );
+    }
   }, []); // stable — reads from refs
 
   const requestDraw = useCallback(() => {
@@ -222,11 +237,13 @@ export function useCanvasGrid({
       if (g[y * gw + x] === colorIndex) return;
       g[y * gw + x] = colorIndex;
       if (s.paintedCells) s.paintedCells.add(`${x},${y}`);
+      s.cursor = { x, y };
       requestDraw();
     } else if (t === 'erase') {
       if (g[y * gw + x] === 0) return;
       g[y * gw + x] = 0;
       if (s.paintedCells) s.paintedCells.add(`${x},${y}`);
+      s.cursor = { x, y };
       requestDraw();
     }
   }, [requestDraw]);
@@ -338,6 +355,60 @@ export function useCanvasGrid({
   const handleContextMenu = useCallback((e) => {
     e.preventDefault();
   }, []);
+
+  // Move keyboard cursor and paint/erase the destination cell
+  const moveCursorAndPaint = useCallback((dx, dy) => {
+    const s = stateRef.current;
+    if (!s.cursor) return;
+    if (callbacksRef.current.tool === 'fill') return;
+    const { gridWidth: gw, gridHeight: gh } = dimsRef.current;
+    const nx = Math.max(0, Math.min(gw - 1, s.cursor.x + dx));
+    const ny = Math.max(0, Math.min(gh - 1, s.cursor.y + dy));
+    s.cursor = { x: nx, y: ny };
+
+    const { tool: t, activePaletteIndex: api, palette: pal, onBatchUpdate } = callbacksRef.current;
+    const g = gridRef.current;
+
+    if (t === 'paint' && pal.length > 0) {
+      const prev = new Uint16Array(g);
+      g[ny * gw + nx] = api + 1;
+      onBatchUpdate(g, prev);
+    } else if (t === 'erase') {
+      const prev = new Uint16Array(g);
+      g[ny * gw + nx] = 0;
+      onBatchUpdate(g, prev);
+    }
+
+    // Scroll to keep cursor visible (1-cell margin)
+    const margin = s.cellSize;
+    const px = s.offsetX + nx * s.cellSize;
+    const py = s.offsetY + ny * s.cellSize;
+    if (px < margin) s.offsetX += margin - px;
+    else if (px + s.cellSize > s.canvasWidth - margin) s.offsetX -= (px + s.cellSize) - (s.canvasWidth - margin);
+    if (py < margin) s.offsetY += margin - py;
+    else if (py + s.cellSize > s.canvasHeight - margin) s.offsetY -= (py + s.cellSize) - (s.canvasHeight - margin);
+
+    requestDraw();
+  }, [requestDraw]);
+
+  // Arrow key + Escape handling for keyboard cursor
+  useEffect(() => {
+    const handler = (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA' || e.target.tagName === 'SELECT') return;
+      switch (e.key) {
+        case 'ArrowLeft':  e.preventDefault(); moveCursorAndPaint(-1,  0); break;
+        case 'ArrowRight': e.preventDefault(); moveCursorAndPaint( 1,  0); break;
+        case 'ArrowUp':    e.preventDefault(); moveCursorAndPaint( 0, -1); break;
+        case 'ArrowDown':  e.preventDefault(); moveCursorAndPaint( 0,  1); break;
+        case 'Escape':
+          stateRef.current.cursor = null;
+          requestDraw();
+          break;
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [moveCursorAndPaint, requestDraw]);
 
   // Zoom centered on canvas center
   const zoom = useCallback((factor) => {
