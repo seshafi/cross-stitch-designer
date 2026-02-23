@@ -38,7 +38,7 @@ export function useCanvasGrid({
     canvasHeight: 0,
     dpr: 1,
     hasInitialFit: false,
-    cursor: null, // { x, y } keyboard cursor position
+    cursor: null,     // { x, y } keyboard cursor / line-draw origin
   });
 
   const gridRef = useRef(grid);
@@ -196,6 +196,7 @@ export function useCanvasGrid({
         cellSize - lw,
       );
     }
+
   }, []); // stable — reads from refs
 
   const requestDraw = useCallback(() => {
@@ -255,8 +256,8 @@ export function useCanvasGrid({
     const s = stateRef.current;
     const { tool: t, onFloodFill: fill } = callbacksRef.current;
 
-    // Middle click or shift+left click = pan
-    if (e.button === 1 || (e.button === 0 && e.shiftKey)) {
+    // Middle click or Ctrl+left-drag = pan
+    if (e.button === 1 || (e.button === 0 && e.ctrlKey)) {
       e.preventDefault();
       s.isPanning = true;
       s.panStartX = e.clientX;
@@ -267,24 +268,47 @@ export function useCanvasGrid({
       return;
     }
 
-    // Left click = paint/erase/fill
-    if (e.button === 0) {
-      const cell = canvasToCell(e.clientX, e.clientY);
-      if (!cell) return;
+    if (e.button !== 0) return;
+    const cell = canvasToCell(e.clientX, e.clientY);
+    if (!cell) return;
 
-      if (t === 'fill') {
-        fill(cell.x, cell.y);
-        return;
+    // Shift+left-click = draw line from last cursor position (paint/erase only)
+    if (e.shiftKey && (t === 'paint' || t === 'erase')) {
+      const origin = s.cursor;
+      if (origin && (cell.x === origin.x || cell.y === origin.y)) {
+        const { activePaletteIndex: api, palette: pal, onBatchUpdate } = callbacksRef.current;
+        if (t === 'paint' && pal.length === 0) return;
+        const g = gridRef.current;
+        const { gridWidth: gw } = dimsRef.current;
+        const prev = new Uint16Array(g);
+        const colorIndex = t === 'paint' ? api + 1 : 0;
+        if (cell.y === origin.y) {
+          const minX = Math.min(origin.x, cell.x), maxX = Math.max(origin.x, cell.x);
+          for (let x = minX; x <= maxX; x++) g[origin.y * gw + x] = colorIndex;
+        } else {
+          const minY = Math.min(origin.y, cell.y), maxY = Math.max(origin.y, cell.y);
+          for (let y = minY; y <= maxY; y++) g[y * gw + origin.x] = colorIndex;
+        }
+        onBatchUpdate(g, prev);
+        s.cursor = { x: cell.x, y: cell.y };
+        requestDraw();
       }
-
-      s.isPainting = true;
-      s.lastPaintX = -1;
-      s.lastPaintY = -1;
-      s.paintedCells = new Set();
-      s.gridBeforePaint = new Uint16Array(gridRef.current);
-      paintCell(cell.x, cell.y);
+      return;
     }
-  }, [canvasToCell, paintCell]);
+
+    // Regular left click = paint/erase/fill
+    if (t === 'fill') {
+      fill(cell.x, cell.y);
+      return;
+    }
+
+    s.isPainting = true;
+    s.lastPaintX = -1;
+    s.lastPaintY = -1;
+    s.paintedCells = new Set();
+    s.gridBeforePaint = new Uint16Array(gridRef.current);
+    paintCell(cell.x, cell.y);
+  }, [canvasToCell, paintCell, requestDraw]);
 
   const handleMouseMove = useCallback((e) => {
     const s = stateRef.current;
