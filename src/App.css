@@ -1,4 +1,4 @@
-/* Hover effects for remove buttons on palette swatches */
+/* Show remove button on palette swatch hover */
 div:hover > .remove-btn {
-  display: block !important;
+  display: flex !important;
 }

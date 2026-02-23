@@ -8,10 +8,13 @@ export default function ColorPalette({ inventory }) {
   const dispatch = usePatternDispatch();
   const [search, setSearch] = useState('');
   const [showPicker, setShowPicker] = useState(false);
+  const [inStockOnly, setInStockOnly] = useState(false);
 
   const filteredDmc = DMC_COLORS.filter(c => {
     const q = search.toLowerCase();
-    return c.dmc.toLowerCase().includes(q) || c.name.toLowerCase().includes(q);
+    const matchesSearch = c.dmc.toLowerCase().includes(q) || c.name.toLowerCase().includes(q);
+    const matchesStock = !inStockOnly || !inventory || inventory.includes(c.dmc);
+    return matchesSearch && matchesStock;
   });
 
   const addColor = (color) => {
@@ -67,23 +70,25 @@ export default function ColorPalette({ inventory }) {
               <button
                 onClick={(e) => { e.stopPropagation(); removeColor(i); }}
                 title="Remove color"
+                className="remove-btn"
                 style={{
                   position: 'absolute',
-                  top: -6,
-                  right: -6,
-                  width: 16,
-                  height: 16,
+                  top: -5,
+                  right: -5,
+                  width: 15,
+                  height: 15,
                   borderRadius: '50%',
                   background: 'var(--danger)',
                   color: '#fff',
-                  fontSize: 10,
-                  lineHeight: '14px',
-                  textAlign: 'center',
+                  fontSize: 9,
                   border: '1px solid var(--bg-primary)',
                   display: 'none',
+                  alignItems: 'center',
+                  justifyContent: 'center',
                 }}
-                className="remove-btn"
-              />
+              >
+                ×
+              </button>
             </div>
           );
         })}
@@ -96,8 +101,28 @@ export default function ColorPalette({ inventory }) {
             placeholder="Search DMC colors..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            style={{ width: '100%', marginBottom: 8 }}
+            style={{ width: '100%', marginBottom: 6 }}
           />
+          {inventory && inventory.length > 0 && (
+            <label style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 6,
+              fontSize: 12,
+              color: 'var(--text-secondary)',
+              marginBottom: 8,
+              cursor: 'pointer',
+              userSelect: 'none',
+            }}>
+              <input
+                type="checkbox"
+                checked={inStockOnly}
+                onChange={(e) => setInStockOnly(e.target.checked)}
+                style={{ cursor: 'pointer' }}
+              />
+              In stock only
+            </label>
+          )}
           <div style={{
             maxHeight: 200,
             overflowY: 'auto',
