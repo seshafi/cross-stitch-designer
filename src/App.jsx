@@ -31,6 +31,7 @@ function AppInner() {
       width: s.width,
       height: s.height,
       notes: s.notes,
+      background: s.background,
       palette: s.palette,
       grid: gridToArray(s.grid),
       createdAt: s.createdAt,

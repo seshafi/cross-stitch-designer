@@ -11,6 +11,7 @@ export function useCanvasGrid({
   height: gridHeight,
   grid,
   palette,
+  background,
   showGrid,
   tool,
   activePaletteIndex,
@@ -55,6 +56,9 @@ export function useCanvasGrid({
   const showGridRef = useRef(showGrid);
   showGridRef.current = showGrid;
 
+  const backgroundRef = useRef(background);
+  backgroundRef.current = background;
+
   const paletteRef = useRef(palette);
   paletteRef.current = palette;
 
@@ -72,6 +76,7 @@ export function useCanvasGrid({
     const { gridWidth: gw, gridHeight: gh } = dimsRef.current;
     const pal = paletteRef.current;
     const sg = showGridRef.current;
+    const bg = backgroundRef.current;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -88,7 +93,7 @@ export function useCanvasGrid({
     const gridPixelY = offsetY + startRow * cellSize;
     const gridPixelW = (endCol - startCol) * cellSize;
     const gridPixelH = (endRow - startRow) * cellSize;
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = bg;
     ctx.fillRect(gridPixelX, gridPixelY, gridPixelW, gridPixelH);
 
     // Batch cells by color to minimize fillStyle changes
@@ -512,7 +517,7 @@ export function useCanvasGrid({
   // Re-draw when dependencies change
   useEffect(() => {
     requestDraw();
-  }, [grid, palette, showGrid, requestDraw]);
+  }, [grid, palette, background, showGrid, requestDraw]);
 
   // Recenter when grid dimensions change
   useEffect(() => {

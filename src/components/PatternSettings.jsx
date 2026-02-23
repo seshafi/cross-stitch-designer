@@ -3,7 +3,7 @@ import { usePattern, usePatternDispatch } from '../context/PatternContext.jsx';
 import { resizeGrid } from '../utils/gridHelpers.js';
 
 export default function PatternSettings() {
-  const { name, width, height, notes } = usePattern();
+  const { name, width, height, notes, background } = usePattern();
   const dispatch = usePatternDispatch();
   const state = usePattern();
 
@@ -78,6 +78,27 @@ export default function PatternSettings() {
         <span style={{ fontSize: 11, color: 'var(--text-secondary)' }}>
           Current: {width}×{height}
         </span>
+      </div>
+
+      <div style={{ marginBottom: 8 }}>
+        <label style={{ fontSize: 12, color: 'var(--text-secondary)', display: 'block', marginBottom: 2 }}>
+          Aida Background Colour
+        </label>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <input
+            type="color"
+            value={background}
+            onChange={(e) => dispatch({ type: 'SET_BACKGROUND', background: e.target.value })}
+            style={{ width: 36, height: 28, padding: 2, borderRadius: 4, border: '1px solid var(--border)', cursor: 'pointer' }}
+          />
+          <span style={{ fontSize: 12, color: 'var(--text-secondary)', fontFamily: 'monospace' }}>{background}</span>
+          <button
+            onClick={() => dispatch({ type: 'SET_BACKGROUND', background: '#ffffff' })}
+            style={{ marginLeft: 'auto', fontSize: 11, padding: '2px 6px', borderRadius: 4, background: 'var(--bg-surface)', border: '1px solid var(--border)' }}
+          >
+            Reset
+          </button>
+        </div>
       </div>
 
       <div>

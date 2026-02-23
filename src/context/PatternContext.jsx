@@ -15,6 +15,7 @@ function createInitialState() {
     width: DEFAULT_WIDTH,
     height: DEFAULT_HEIGHT,
     notes: '',
+    background: '#ffffff',
     palette: [],
     grid: createGrid(DEFAULT_WIDTH, DEFAULT_HEIGHT),
     createdAt: Date.now(),
@@ -103,7 +104,7 @@ function patternReducer(state, action) {
       return { ...state, showGrid: !state.showGrid };
 
     case 'SET_PATTERN': {
-      const { id, name, width, height, notes, palette, grid, createdAt, modifiedAt } = action.pattern;
+      const { id, name, width, height, notes, background, palette, grid, createdAt, modifiedAt } = action.pattern;
       return {
         ...state,
         id,
@@ -111,6 +112,7 @@ function patternReducer(state, action) {
         width,
         height,
         notes: notes || '',
+        background: background || '#ffffff',
         palette,
         grid: new Uint16Array(grid),
         createdAt,
@@ -144,6 +146,9 @@ function patternReducer(state, action) {
 
     case 'SET_NOTES':
       return { ...state, notes: action.notes, dirty: true };
+
+    case 'SET_BACKGROUND':
+      return { ...state, background: action.background, dirty: true };
 
     case 'MARK_SAVED':
       return { ...state, id: action.id, dirty: false, modifiedAt: Date.now() };

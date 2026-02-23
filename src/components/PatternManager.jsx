@@ -25,6 +25,7 @@ export default function PatternManager() {
       width: state.width,
       height: state.height,
       notes: state.notes,
+      background: state.background,
       palette: state.palette,
       grid: gridToArray(state.grid),
       createdAt: state.createdAt,

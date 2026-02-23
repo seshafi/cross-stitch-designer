@@ -4,7 +4,7 @@ import { useCanvasGrid } from '../hooks/useCanvasGrid.js';
 import { floodFill } from '../utils/floodFill.js';
 
 export default function GridCanvas({ fitRef, zoomRef }) {
-  const { width, height, grid, palette, showGrid, tool, activePaletteIndex } = usePattern();
+  const { width, height, grid, palette, background, showGrid, tool, activePaletteIndex } = usePattern();
   const dispatch = usePatternDispatch();
   const canvasElRef = useRef(null);
   const wheelRef = useRef(null);
@@ -45,6 +45,7 @@ export default function GridCanvas({ fitRef, zoomRef }) {
     height,
     grid,
     palette,
+    background,
     showGrid,
     tool,
     activePaletteIndex,
