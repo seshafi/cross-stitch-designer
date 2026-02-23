@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { usePattern, usePatternDispatch } from '../context/PatternContext.jsx';
 import { listPatterns, loadPattern, savePattern, deletePattern } from '../utils/storage.js';
 import { gridToArray, arrayToGrid } from '../utils/gridHelpers.js';
@@ -8,6 +8,7 @@ export default function PatternManager() {
   const dispatch = usePatternDispatch();
   const [patterns, setPatterns] = useState([]);
   const [showList, setShowList] = useState(false);
+  const importRef = useRef(null);
 
   const refreshList = () => {
     setPatterns(listPatterns());
@@ -53,6 +54,52 @@ export default function PatternManager() {
   const handleNew = () => {
     dispatch({ type: 'NEW_PATTERN' });
     setShowList(false);
+  };
+
+  const handleExport = () => {
+    const patternData = {
+      exportVersion: 1,
+      id: state.id || `pattern_${Date.now()}`,
+      name: state.name,
+      width: state.width,
+      height: state.height,
+      notes: state.notes,
+      background: state.background,
+      palette: state.palette,
+      grid: gridToArray(state.grid),
+      createdAt: state.createdAt,
+      modifiedAt: Date.now(),
+    };
+    const blob = new Blob([JSON.stringify(patternData, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${state.name || 'pattern'}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportFile = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = (ev) => {
+      try {
+        const data = JSON.parse(ev.target.result);
+        if (!data.grid || !data.width || !data.height) {
+          alert('Invalid pattern file.');
+          return;
+        }
+        const imported = { ...data, id: `pattern_${Date.now()}` };
+        savePattern(imported);
+        dispatch({ type: 'SET_PATTERN', pattern: imported });
+        refreshList();
+      } catch {
+        alert('Could not read pattern file.');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   };
 
   return (
@@ -103,6 +150,39 @@ export default function PatternManager() {
         >
           {showList ? 'Close' : 'Load'}
         </button>
+        <button
+          onClick={handleExport}
+          title="Export current pattern as a JSON file"
+          style={{
+            padding: '4px 12px',
+            borderRadius: 4,
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border)',
+            fontSize: 12,
+          }}
+        >
+          Export
+        </button>
+        <button
+          onClick={() => importRef.current.click()}
+          title="Import a pattern from a JSON file"
+          style={{
+            padding: '4px 12px',
+            borderRadius: 4,
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border)',
+            fontSize: 12,
+          }}
+        >
+          Import
+        </button>
+        <input
+          ref={importRef}
+          type="file"
+          accept=".json,application/json"
+          onChange={handleImportFile}
+          style={{ display: 'none' }}
+        />
       </div>
 
       {showList && (
