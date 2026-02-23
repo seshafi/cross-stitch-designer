@@ -3,7 +3,7 @@ import { usePattern, usePatternDispatch } from '../context/PatternContext.jsx';
 import { useCanvasGrid } from '../hooks/useCanvasGrid.js';
 import { floodFill } from '../utils/floodFill.js';
 
-export default function GridCanvas({ fitRef }) {
+export default function GridCanvas({ fitRef, zoomRef }) {
   const { width, height, grid, palette, showGrid, tool, activePaletteIndex } = usePattern();
   const dispatch = usePatternDispatch();
   const canvasElRef = useRef(null);
@@ -39,6 +39,7 @@ export default function GridCanvas({ fitRef }) {
     handleWheel,
     handleContextMenu,
     fitToScreen,
+    zoom,
   } = useCanvasGrid({
     width,
     height,
@@ -53,10 +54,11 @@ export default function GridCanvas({ fitRef }) {
     onBatchUpdate,
   });
 
-  // Expose fitToScreen via ref
+  // Expose fitToScreen and zoom via refs
   useEffect(() => {
     if (fitRef) fitRef.current = fitToScreen;
-  }, [fitRef, fitToScreen]);
+    if (zoomRef) zoomRef.current = zoom;
+  }, [fitRef, fitToScreen, zoomRef, zoom]);
 
   // Keep wheel handler ref current so the stable listener uses latest version
   wheelRef.current = handleWheel;

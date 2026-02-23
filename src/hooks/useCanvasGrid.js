@@ -339,6 +339,21 @@ export function useCanvasGrid({
     e.preventDefault();
   }, []);
 
+  // Zoom centered on canvas center
+  const zoom = useCallback((factor) => {
+    const s = stateRef.current;
+    const centerX = s.canvasWidth / 2;
+    const centerY = s.canvasHeight / 2;
+    const oldCellSize = s.cellSize;
+    const newCellSize = Math.max(MIN_CELL_SIZE, Math.min(MAX_CELL_SIZE, oldCellSize * factor));
+    const worldX = (centerX - s.offsetX) / oldCellSize;
+    const worldY = (centerY - s.offsetY) / oldCellSize;
+    s.cellSize = newCellSize;
+    s.offsetX = centerX - worldX * newCellSize;
+    s.offsetY = centerY - worldY * newCellSize;
+    requestDraw();
+  }, [requestDraw]);
+
   // Fit grid to canvas
   const fitToScreen = useCallback(() => {
     const s = stateRef.current;
@@ -418,5 +433,6 @@ export function useCanvasGrid({
     handleWheel,
     handleContextMenu,
     fitToScreen,
+    zoom,
   };
 }

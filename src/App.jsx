@@ -15,11 +15,20 @@ function AppInner() {
   const { dirty, name, undoStack, redoStack } = usePattern();
   const dispatch = usePatternDispatch();
   const fitRef = useRef(null);
+  const zoomRef = useRef(null);
   const [inventory, setInventory] = useLocalStorage('xstitch-inventory', []);
   const [showPreview, setShowPreview] = useState(false);
 
   const handleFitToScreen = useCallback(() => {
     if (fitRef.current) fitRef.current();
+  }, []);
+
+  const handleZoomIn = useCallback(() => {
+    if (zoomRef.current) zoomRef.current(1.25);
+  }, []);
+
+  const handleZoomOut = useCallback(() => {
+    if (zoomRef.current) zoomRef.current(1 / 1.25);
   }, []);
 
   const handleToggleGrid = useCallback(() => {
@@ -112,6 +121,8 @@ function AppInner() {
       </div>
       <Toolbar
         onFitToScreen={handleFitToScreen}
+        onZoomIn={handleZoomIn}
+        onZoomOut={handleZoomOut}
         onToggleGrid={handleToggleGrid}
         onUndo={handleUndo}
         onRedo={handleRedo}
@@ -160,7 +171,7 @@ function AppInner() {
         leftSidebar={leftSidebar}
         rightSidebar={rightSidebar}
       >
-        <GridCanvas fitRef={fitRef} />
+        <GridCanvas fitRef={fitRef} zoomRef={zoomRef} />
       </Layout>
       {showPreview && <PreviewModal onClose={() => setShowPreview(false)} />}
     </>

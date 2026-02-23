@@ -6,7 +6,7 @@ const TOOLS = [
   { id: 'fill', label: 'Fill', shortcut: 'F', icon: '◆' },
 ];
 
-export default function Toolbar({ onFitToScreen, onToggleGrid, onUndo, onRedo, canUndo, canRedo }) {
+export default function Toolbar({ onFitToScreen, onZoomIn, onZoomOut, onToggleGrid, onUndo, onRedo, canUndo, canRedo }) {
   const { tool, showGrid } = usePattern();
   const dispatch = usePatternDispatch();
 
@@ -92,6 +92,34 @@ export default function Toolbar({ onFitToScreen, onToggleGrid, onUndo, onRedo, c
         }}
       >
         Fit
+      </button>
+      <button
+        onClick={onZoomOut}
+        title="Zoom Out"
+        style={{
+          padding: '4px 8px',
+          borderRadius: 4,
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border)',
+          fontSize: 15,
+          lineHeight: 1,
+        }}
+      >
+        −
+      </button>
+      <button
+        onClick={onZoomIn}
+        title="Zoom In"
+        style={{
+          padding: '4px 8px',
+          borderRadius: 4,
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border)',
+          fontSize: 15,
+          lineHeight: 1,
+        }}
+      >
+        +
       </button>
     </div>
   );
