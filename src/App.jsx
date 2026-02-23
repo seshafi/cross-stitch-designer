@@ -8,6 +8,7 @@ import PatternManager from './components/PatternManager.jsx';
 import PatternSettings from './components/PatternSettings.jsx';
 import InventoryManager from './components/InventoryManager.jsx';
 import PreviewModal from './components/PreviewModal.jsx';
+import HelpModal from './components/HelpModal.jsx';
 import { useLocalStorage } from './hooks/useLocalStorage.js';
 import { savePattern } from './utils/storage.js';
 import { gridToArray } from './utils/gridHelpers.js';
@@ -21,6 +22,7 @@ function AppInner() {
   const zoomRef = useRef(null);
   const [inventory, setInventory] = useLocalStorage('xstitch-inventory', []);
   const [showPreview, setShowPreview] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const handleSave = useCallback(() => {
     const s = patternState;
@@ -168,6 +170,19 @@ function AppInner() {
         >
           Preview
         </button>
+        <button
+          onClick={() => setShowHelp(true)}
+          title="Help"
+          style={{
+            padding: '4px 10px',
+            borderRadius: 4,
+            background: 'var(--bg-surface)',
+            border: '1px solid var(--border)',
+            fontSize: 13,
+          }}
+        >
+          ?
+        </button>
       </div>
     </div>
   );
@@ -200,6 +215,7 @@ function AppInner() {
         <GridCanvas fitRef={fitRef} zoomRef={zoomRef} />
       </Layout>
       {showPreview && <PreviewModal onClose={() => setShowPreview(false)} />}
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
     </>
   );
 }
