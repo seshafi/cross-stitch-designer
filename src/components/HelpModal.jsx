@@ -43,6 +43,12 @@ export default function HelpModal({ onClose }) {
             set the <strong>background colour</strong> to match your Aida fabric.
           </p>
           <p>
+            <strong>Inserting and deleting rows/columns:</strong> right-click any cell on the
+            canvas to open a context menu. You can insert a blank row above or below, delete the
+            current row, or do the same for the column — without touching the Settings panel.
+            These actions are fully undoable with Ctrl+Z.
+          </p>
+          <p>
             Use <strong>New</strong> in the Patterns panel to start fresh whenever you like.
           </p>
         </Section>

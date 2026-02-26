@@ -45,7 +45,7 @@ export default function ContextMenu({ cell, x, y, width, height, onAction, onClo
         position: 'fixed',
         left: nudgedX,
         top: nudgedY,
-        background: 'var(--bg-panel)',
+        background: 'var(--bg-surface)',
         border: '1px solid var(--border-color)',
         borderRadius: '6px',
         boxShadow: '0 4px 16px rgba(0,0,0,0.5)',
