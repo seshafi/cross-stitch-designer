@@ -20,6 +20,7 @@ export function useCanvasGrid({
   onCellErase,
   onFloodFill,
   onBatchUpdate,
+  onContextMenu,
 }) {
   const canvasRef = useRef(null);
   const observerRef = useRef(null);
@@ -47,8 +48,8 @@ export function useCanvasGrid({
   const rafRef = useRef(null);
 
   // Keep refs to latest callbacks to avoid stale closures
-  const callbacksRef = useRef({ onFloodFill, onBatchUpdate, tool, activePaletteIndex, palette });
-  callbacksRef.current = { onFloodFill, onBatchUpdate, tool, activePaletteIndex, palette };
+  const callbacksRef = useRef({ onFloodFill, onBatchUpdate, onContextMenu, tool, activePaletteIndex, palette });
+  callbacksRef.current = { onFloodFill, onBatchUpdate, onContextMenu, tool, activePaletteIndex, palette };
 
   // Keep grid dimensions in a ref for the draw function
   const dimsRef = useRef({ gridWidth, gridHeight });
@@ -388,7 +389,11 @@ export function useCanvasGrid({
 
   const handleContextMenu = useCallback((e) => {
     e.preventDefault();
-  }, []);
+    const cell = canvasToCell(e.clientX, e.clientY);
+    if (!cell) return;
+    const { onContextMenu: cb } = callbacksRef.current;
+    if (cb) cb({ cell, clientX: e.clientX, clientY: e.clientY });
+  }, [canvasToCell]);
 
   // Move keyboard cursor and paint/erase the destination cell
   const moveCursorAndPaint = useCallback((dx, dy) => {
