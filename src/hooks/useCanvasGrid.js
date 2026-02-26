@@ -15,6 +15,7 @@ export function useCanvasGrid({
   showGrid,
   tool,
   activePaletteIndex,
+  colorOverrides,
   onCellPaint,
   onCellErase,
   onFloodFill,
@@ -59,6 +60,9 @@ export function useCanvasGrid({
   const backgroundRef = useRef(background);
   backgroundRef.current = background;
 
+  const colorOverridesRef = useRef(colorOverrides);
+  colorOverridesRef.current = colorOverrides;
+
   const paletteRef = useRef(palette);
   paletteRef.current = palette;
 
@@ -77,6 +81,7 @@ export function useCanvasGrid({
     const pal = paletteRef.current;
     const sg = showGridRef.current;
     const bg = backgroundRef.current;
+    const overrides = colorOverridesRef.current;
 
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, canvasWidth, canvasHeight);
@@ -111,7 +116,7 @@ export function useCanvasGrid({
     for (const [colorIdx, coords] of colorBuckets) {
       const color = pal[colorIdx - 1];
       if (!color) continue;
-      ctx.fillStyle = color.hex;
+      ctx.fillStyle = (overrides && overrides[color.dmc]) || color.hex;
       for (let i = 0; i < coords.length; i += 2) {
         const cx = coords[i];
         const cy = coords[i + 1];

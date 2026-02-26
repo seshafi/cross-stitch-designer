@@ -21,6 +21,7 @@ function AppInner() {
   const fitRef = useRef(null);
   const zoomRef = useRef(null);
   const [inventory, setInventory] = useLocalStorage('xstitch-inventory', []);
+  const [colorOverrides, setColorOverrides] = useLocalStorage('xstitch-color-overrides', {});
   const [showPreview, setShowPreview] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
@@ -189,9 +190,9 @@ function AppInner() {
 
   const leftSidebar = (
     <>
-      <ColorPalette inventory={inventory} />
+      <ColorPalette inventory={inventory} colorOverrides={colorOverrides} />
       <div style={{ borderTop: '1px solid var(--border)' }}>
-        <InventoryManager inventory={inventory} setInventory={setInventory} />
+        <InventoryManager inventory={inventory} setInventory={setInventory} colorOverrides={colorOverrides} setColorOverrides={setColorOverrides} />
       </div>
     </>
   );
@@ -212,7 +213,7 @@ function AppInner() {
         leftSidebar={leftSidebar}
         rightSidebar={rightSidebar}
       >
-        <GridCanvas fitRef={fitRef} zoomRef={zoomRef} />
+        <GridCanvas fitRef={fitRef} zoomRef={zoomRef} colorOverrides={colorOverrides} />
       </Layout>
       {showPreview && <PreviewModal onClose={() => setShowPreview(false)} />}
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}

@@ -1,7 +1,7 @@
 import { useState, useMemo } from 'react';
 import { DMC_COLORS } from '../data/dmcColors.js';
 
-export default function InventoryManager({ inventory, setInventory }) {
+export default function InventoryManager({ inventory, setInventory, colorOverrides, setColorOverrides }) {
   const [search, setSearch] = useState('');
   const [showOnly, setShowOnly] = useState('all'); // 'all' | 'owned' | 'unowned'
   const [isOpen, setIsOpen] = useState(false);
@@ -122,17 +122,56 @@ export default function InventoryManager({ inventory, setInventory }) {
                 onChange={() => toggleColor(color.dmc)}
                 style={{ accentColor: 'var(--accent)' }}
               />
-              <span style={{
-                width: 16,
-                height: 16,
-                borderRadius: 2,
-                backgroundColor: color.hex,
-                border: '1px solid rgba(255,255,255,0.2)',
-                flexShrink: 0,
-              }} />
-              <span>
+              <input
+                type="color"
+                value={(colorOverrides && colorOverrides[color.dmc]) || color.hex}
+                onChange={(e) => setColorOverrides(prev => ({ ...prev, [color.dmc]: e.target.value }))}
+                title="Click to override color"
+                style={{
+                  width: 16,
+                  height: 16,
+                  borderRadius: 2,
+                  border: '1px solid rgba(255,255,255,0.2)',
+                  flexShrink: 0,
+                  padding: 0,
+                  cursor: 'pointer',
+                  appearance: 'none',
+                  backgroundColor: (colorOverrides && colorOverrides[color.dmc]) || color.hex,
+                }}
+              />
+              <span style={{ flex: 1 }}>
                 <strong>{color.dmc}</strong> {color.name}
               </span>
+              {colorOverrides && colorOverrides[color.dmc] && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    setColorOverrides(prev => {
+                      const next = { ...prev };
+                      delete next[color.dmc];
+                      return next;
+                    });
+                  }}
+                  title="Reset to original color"
+                  style={{
+                    width: 14,
+                    height: 14,
+                    borderRadius: '50%',
+                    background: 'var(--bg-surface)',
+                    border: '1px solid var(--border)',
+                    color: 'var(--text-secondary)',
+                    fontSize: 9,
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    cursor: 'pointer',
+                    flexShrink: 0,
+                    lineHeight: 1,
+                  }}
+                >
+                  ×
+                </button>
+              )}
             </label>
           );
         })}

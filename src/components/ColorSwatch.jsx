@@ -5,8 +5,9 @@ function isLightColor(hex) {
   return (r * 299 + g * 587 + b * 114) / 1000 > 160;
 }
 
-export default function ColorSwatch({ color, selected, onClick, size = 32, showLabel, indicator }) {
-  const light = isLightColor(color.hex);
+export default function ColorSwatch({ color, overrideHex, selected, onClick, size = 32, showLabel, indicator }) {
+  const effectiveHex = overrideHex || color.hex;
+  const light = isLightColor(effectiveHex);
   return (
     <button
       onClick={onClick}
@@ -16,7 +17,7 @@ export default function ColorSwatch({ color, selected, onClick, size = 32, showL
         height: size,
         minWidth: size,
         minHeight: size,
-        backgroundColor: color.hex,
+        backgroundColor: effectiveHex,
         border: selected ? `2px solid var(--accent)` : '1px solid rgba(255,255,255,0.2)',
         borderRadius: 4,
         position: 'relative',

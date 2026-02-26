@@ -54,6 +54,13 @@ export default function HelpModal({ onClose }) {
             up you can filter the colour picker to show only the threads you actually have,
             making it much easier to plan a pattern around your stash.
           </p>
+          <p>
+            <strong>Correcting colours:</strong> DMC colour values in the app are approximate. To
+            fix a colour, click the small colour swatch next to any thread in the Inventory list to
+            open a colour picker and set your preferred value. Overrides are saved globally and
+            apply everywhere — palette, canvas, and PDF export. Click the <strong>×</strong> next
+            to an overridden swatch to restore the original value.
+          </p>
         </Section>
 
         <Section title="3. Choose your colours">

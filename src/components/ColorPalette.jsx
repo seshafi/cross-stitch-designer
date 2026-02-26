@@ -3,7 +3,7 @@ import { usePattern, usePatternDispatch } from '../context/PatternContext.jsx';
 import { DMC_COLORS } from '../data/dmcColors.js';
 import ColorSwatch from './ColorSwatch.jsx';
 
-export default function ColorPalette({ inventory }) {
+export default function ColorPalette({ inventory, colorOverrides }) {
   const { palette, activePaletteIndex } = usePattern();
   const dispatch = usePatternDispatch();
   const [search, setSearch] = useState('');
@@ -61,6 +61,7 @@ export default function ColorPalette({ inventory }) {
             <div key={color.dmc} style={{ position: 'relative' }}>
               <ColorSwatch
                 color={color}
+                overrideHex={colorOverrides && colorOverrides[color.dmc]}
                 selected={i === activePaletteIndex}
                 onClick={() => dispatch({ type: 'SET_ACTIVE_COLOR', index: i })}
                 size={34}
@@ -152,7 +153,7 @@ export default function ColorPalette({ inventory }) {
                     width: 20,
                     height: 20,
                     borderRadius: 3,
-                    backgroundColor: color.hex,
+                    backgroundColor: (colorOverrides && colorOverrides[color.dmc]) || color.hex,
                     border: '1px solid rgba(255,255,255,0.2)',
                     flexShrink: 0,
                   }} />

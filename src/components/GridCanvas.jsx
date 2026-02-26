@@ -3,7 +3,7 @@ import { usePattern, usePatternDispatch } from '../context/PatternContext.jsx';
 import { useCanvasGrid } from '../hooks/useCanvasGrid.js';
 import { floodFill } from '../utils/floodFill.js';
 
-export default function GridCanvas({ fitRef, zoomRef }) {
+export default function GridCanvas({ fitRef, zoomRef, colorOverrides }) {
   const { width, height, grid, palette, background, showGrid, tool, activePaletteIndex } = usePattern();
   const dispatch = usePatternDispatch();
   const canvasElRef = useRef(null);
@@ -49,6 +49,7 @@ export default function GridCanvas({ fitRef, zoomRef }) {
     showGrid,
     tool,
     activePaletteIndex,
+    colorOverrides,
     onCellPaint,
     onCellErase,
     onFloodFill,
