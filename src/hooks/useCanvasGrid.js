@@ -120,9 +120,8 @@ export function useCanvasGrid({
     }
 
     if (vm === 'cross') {
-      // Cross mode: draw X stitches in thread color, no filled squares
-      const pad = Math.max(1, cellSize * 0.15);
-      ctx.lineWidth = Math.max(1, cellSize * 0.2);
+      // Cross mode: draw X stitches corner-to-corner in thread color
+      ctx.lineWidth = Math.max(1.5, cellSize * 0.35);
       ctx.lineCap = 'round';
       for (const [colorIdx, coords] of colorBuckets) {
         const color = pal[colorIdx - 1];
@@ -132,10 +131,10 @@ export function useCanvasGrid({
         for (let i = 0; i < coords.length; i += 2) {
           const px = offsetX + coords[i] * cellSize;
           const py = offsetY + coords[i + 1] * cellSize;
-          ctx.moveTo(px + pad, py + pad);
-          ctx.lineTo(px + cellSize - pad, py + cellSize - pad);
-          ctx.moveTo(px + cellSize - pad, py + pad);
-          ctx.lineTo(px + pad, py + cellSize - pad);
+          ctx.moveTo(px, py);
+          ctx.lineTo(px + cellSize, py + cellSize);
+          ctx.moveTo(px + cellSize, py);
+          ctx.lineTo(px, py + cellSize);
         }
         ctx.stroke();
       }
