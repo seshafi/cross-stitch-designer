@@ -16,6 +16,7 @@ export function useCanvasGrid({
   tool,
   activePaletteIndex,
   colorOverrides,
+  viewMode,
   onCellPaint,
   onCellErase,
   onFloodFill,
@@ -58,6 +59,9 @@ export function useCanvasGrid({
   const showGridRef = useRef(showGrid);
   showGridRef.current = showGrid;
 
+  const viewModeRef = useRef(viewMode);
+  viewModeRef.current = viewMode;
+
   const backgroundRef = useRef(background);
   backgroundRef.current = background;
 
@@ -81,6 +85,7 @@ export function useCanvasGrid({
     const { gridWidth: gw, gridHeight: gh } = dimsRef.current;
     const pal = paletteRef.current;
     const sg = showGridRef.current;
+    const vm = viewModeRef.current;
     const bg = backgroundRef.current;
     const overrides = colorOverridesRef.current;
 
@@ -114,39 +119,57 @@ export function useCanvasGrid({
       }
     }
 
-    for (const [colorIdx, coords] of colorBuckets) {
-      const color = pal[colorIdx - 1];
-      if (!color) continue;
-      ctx.fillStyle = (overrides && overrides[color.dmc]) || color.hex;
-      for (let i = 0; i < coords.length; i += 2) {
-        const cx = coords[i];
-        const cy = coords[i + 1];
-        ctx.fillRect(
-          offsetX + cx * cellSize,
-          offsetY + cy * cellSize,
-          cellSize,
-          cellSize,
-        );
-      }
-    }
-
-    // Stitch marks when zoomed in
-    if (cellSize >= STITCH_MARK_THRESHOLD) {
-      ctx.strokeStyle = 'rgba(0,0,0,0.3)';
-      ctx.lineWidth = Math.max(1, cellSize / 12);
-      const pad = cellSize * 0.2;
-      for (const [, coords] of colorBuckets) {
+    if (vm === 'cross') {
+      // Cross mode: draw X stitches in thread color, no filled squares
+      const pad = Math.max(1, cellSize * 0.15);
+      ctx.lineWidth = Math.max(1, cellSize * 0.2);
+      ctx.lineCap = 'round';
+      for (const [colorIdx, coords] of colorBuckets) {
+        const color = pal[colorIdx - 1];
+        if (!color) continue;
+        ctx.strokeStyle = (overrides && overrides[color.dmc]) || color.hex;
+        ctx.beginPath();
         for (let i = 0; i < coords.length; i += 2) {
-          const cx = coords[i];
-          const cy = coords[i + 1];
-          const px = offsetX + cx * cellSize;
-          const py = offsetY + cy * cellSize;
-          ctx.beginPath();
+          const px = offsetX + coords[i] * cellSize;
+          const py = offsetY + coords[i + 1] * cellSize;
           ctx.moveTo(px + pad, py + pad);
           ctx.lineTo(px + cellSize - pad, py + cellSize - pad);
           ctx.moveTo(px + cellSize - pad, py + pad);
           ctx.lineTo(px + pad, py + cellSize - pad);
-          ctx.stroke();
+        }
+        ctx.stroke();
+      }
+    } else {
+      // Pixel mode: filled squares + faint stitch marks when zoomed in
+      for (const [colorIdx, coords] of colorBuckets) {
+        const color = pal[colorIdx - 1];
+        if (!color) continue;
+        ctx.fillStyle = (overrides && overrides[color.dmc]) || color.hex;
+        for (let i = 0; i < coords.length; i += 2) {
+          ctx.fillRect(
+            offsetX + coords[i] * cellSize,
+            offsetY + coords[i + 1] * cellSize,
+            cellSize,
+            cellSize,
+          );
+        }
+      }
+      if (cellSize >= STITCH_MARK_THRESHOLD) {
+        ctx.strokeStyle = 'rgba(0,0,0,0.3)';
+        ctx.lineWidth = Math.max(1, cellSize / 12);
+        ctx.lineCap = 'butt';
+        const pad = cellSize * 0.2;
+        for (const [, coords] of colorBuckets) {
+          for (let i = 0; i < coords.length; i += 2) {
+            const px = offsetX + coords[i] * cellSize;
+            const py = offsetY + coords[i + 1] * cellSize;
+            ctx.beginPath();
+            ctx.moveTo(px + pad, py + pad);
+            ctx.lineTo(px + cellSize - pad, py + cellSize - pad);
+            ctx.moveTo(px + cellSize - pad, py + pad);
+            ctx.lineTo(px + pad, py + cellSize - pad);
+            ctx.stroke();
+          }
         }
       }
     }
@@ -527,7 +550,7 @@ export function useCanvasGrid({
   // Re-draw when dependencies change
   useEffect(() => {
     requestDraw();
-  }, [grid, palette, background, showGrid, requestDraw]);
+  }, [grid, palette, background, showGrid, viewMode, requestDraw]);
 
   // Recenter when grid dimensions change
   useEffect(() => {

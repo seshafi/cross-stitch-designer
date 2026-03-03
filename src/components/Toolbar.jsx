@@ -6,7 +6,7 @@ const TOOLS = [
   { id: 'fill', label: 'Fill', shortcut: 'F', icon: '◆' },
 ];
 
-export default function Toolbar({ onFitToScreen, onZoomIn, onZoomOut, onToggleGrid, onUndo, onRedo, canUndo, canRedo }) {
+export default function Toolbar({ onFitToScreen, onZoomIn, onZoomOut, onToggleGrid, onUndo, onRedo, canUndo, canRedo, viewMode, onViewModeChange }) {
   const { tool, showGrid } = usePattern();
   const dispatch = usePatternDispatch();
 
@@ -66,6 +66,24 @@ export default function Toolbar({ onFitToScreen, onZoomIn, onZoomOut, onToggleGr
       >
         Redo
       </button>
+      <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 4px' }} />
+      <select
+        value={viewMode}
+        onChange={e => onViewModeChange(e.target.value)}
+        title="View mode"
+        style={{
+          padding: '4px 6px',
+          borderRadius: 4,
+          background: 'var(--bg-surface)',
+          border: '1px solid var(--border)',
+          fontSize: 13,
+          color: 'var(--text-primary)',
+          cursor: 'pointer',
+        }}
+      >
+        <option value="cross">Cross</option>
+        <option value="pixel">Pixel</option>
+      </select>
       <div style={{ width: 1, height: 24, background: 'var(--border)', margin: '0 4px' }} />
       <button
         onClick={onToggleGrid}

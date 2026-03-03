@@ -22,6 +22,7 @@ function AppInner() {
   const zoomRef = useRef(null);
   const [inventory, setInventory] = useLocalStorage('xstitch-inventory', []);
   const [colorOverrides, setColorOverrides] = useLocalStorage('xstitch-color-overrides', {});
+  const [viewMode, setViewMode] = useLocalStorage('xstitch-view-mode', 'cross');
   const [showPreview, setShowPreview] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
 
@@ -157,6 +158,8 @@ function AppInner() {
         onRedo={handleRedo}
         canUndo={undoStack.length > 0}
         canRedo={redoStack.length > 0}
+        viewMode={viewMode}
+        onViewModeChange={setViewMode}
       />
       <div style={{ marginLeft: 'auto', paddingRight: 12, display: 'flex', gap: 8 }}>
         <button
@@ -213,7 +216,7 @@ function AppInner() {
         leftSidebar={leftSidebar}
         rightSidebar={rightSidebar}
       >
-        <GridCanvas fitRef={fitRef} zoomRef={zoomRef} colorOverrides={colorOverrides} />
+        <GridCanvas fitRef={fitRef} zoomRef={zoomRef} colorOverrides={colorOverrides} viewMode={viewMode} />
       </Layout>
       {showPreview && <PreviewModal onClose={() => setShowPreview(false)} />}
       {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}

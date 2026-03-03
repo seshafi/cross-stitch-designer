@@ -5,7 +5,7 @@ import { floodFill } from '../utils/floodFill.js';
 import { insertRow, deleteRow, insertColumn, deleteColumn } from '../utils/gridHelpers.js';
 import ContextMenu from './ContextMenu.jsx';
 
-export default function GridCanvas({ fitRef, zoomRef, colorOverrides }) {
+export default function GridCanvas({ fitRef, zoomRef, colorOverrides, viewMode }) {
   const { width, height, grid, palette, background, showGrid, tool, activePaletteIndex } = usePattern();
   const dispatch = usePatternDispatch();
   const canvasElRef = useRef(null);
@@ -99,6 +99,7 @@ export default function GridCanvas({ fitRef, zoomRef, colorOverrides }) {
     tool,
     activePaletteIndex,
     colorOverrides,
+    viewMode,
     onCellPaint,
     onCellErase,
     onFloodFill,
