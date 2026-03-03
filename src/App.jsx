@@ -199,7 +199,7 @@ function AppInner() {
 
   const rightSidebar = (
     <>
-      <PatternManager />
+      <PatternManager colorOverrides={colorOverrides} />
       <div style={{ borderTop: '1px solid var(--border)' }}>
         <PatternSettings />
       </div>

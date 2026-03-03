@@ -27,8 +27,9 @@ const BTN = {
   fontSize: 12,
 };
 
-export default function PatternManager() {
+export default function PatternManager({ colorOverrides = {} }) {
   const state = usePattern();
+  const resolveHex = (color) => colorOverrides[color.dmc] || color.hex;
   const dispatch = usePatternDispatch();
   const [patterns, setPatterns] = useState([]);
   const [showList, setShowList] = useState(false);
@@ -150,7 +151,7 @@ export default function PatternManager() {
       for (let x = 0; x < width; x++) {
         const val = grid[y * width + x];
         if (val > 0 && val <= palette.length) {
-          const hex = palette[val - 1].hex;
+          const hex = resolveHex(palette[val - 1]);
           if (!colorGroups[hex]) colorGroups[hex] = [];
           colorGroups[hex].push([x, y]);
         }
@@ -191,7 +192,7 @@ export default function PatternManager() {
       parts.push(`<g font-family="sans-serif" font-size="11">`);
       legend.forEach((c, i) => {
         const ry = ly + i * legendRowH;
-        parts.push(`<rect x="${pad}" y="${ry}" width="12" height="12" fill="${c.hex}" stroke="#bbb" stroke-width="0.5"/>`);
+        parts.push(`<rect x="${pad}" y="${ry}" width="12" height="12" fill="${resolveHex(c)}" stroke="#bbb" stroke-width="0.5"/>`);
         parts.push(`<text x="${pad + 18}" y="${ry + 10}" fill="#111"><tspan font-weight="bold">DMC ${c.dmc}</tspan> \u2014 ${c.name} (${c.count})</text>`);
       });
       parts.push(`</g>`);
@@ -228,7 +229,7 @@ export default function PatternManager() {
       for (let x = 0; x < width; x++) {
         const val = grid[y * width + x];
         if (val > 0 && val <= palette.length) {
-          ctx.fillStyle = palette[val - 1].hex;
+          ctx.fillStyle = resolveHex(palette[val - 1]);
           ctx.fillRect(pad + x * cellSize, pad + y * cellSize, cellSize, cellSize);
         }
       }
@@ -304,7 +305,7 @@ export default function PatternManager() {
 <p class="sub">${width} × ${height} stitches &nbsp;·&nbsp; ${legend.length} colour${legend.length !== 1 ? 's' : ''}</p>
 <img src="${dataUrl}" />
 <div class="legend">${legend.map(c =>
-  `<div class="item"><div class="swatch" style="background:${c.hex};-webkit-print-color-adjust:exact;print-color-adjust:exact"></div><span><b>DMC ${c.dmc}</b> — ${c.name} &nbsp;<span style="color:#888">(${c.count})</span></span></div>`
+  `<div class="item"><div class="swatch" style="background:${resolveHex(c)};-webkit-print-color-adjust:exact;print-color-adjust:exact"></div><span><b>DMC ${c.dmc}</b> — ${c.name} &nbsp;<span style="color:#888">(${c.count})</span></span></div>`
 ).join('')}</div>
 <script>window.onload=()=>window.print()<\/script>
 </body></html>`);
