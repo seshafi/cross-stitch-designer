@@ -121,8 +121,8 @@ export function useCanvasGrid({
 
     if (vm === 'cross') {
       // Cross mode: draw X stitches corner-to-corner in thread color
-      ctx.lineWidth = Math.max(1.5, cellSize * 0.35);
-      ctx.lineCap = 'round';
+      ctx.lineWidth = Math.max(1.5, cellSize * 0.4);
+      ctx.lineCap = 'butt';
       for (const [colorIdx, coords] of colorBuckets) {
         const color = pal[colorIdx - 1];
         if (!color) continue;
