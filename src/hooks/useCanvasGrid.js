@@ -124,7 +124,7 @@ export function useCanvasGrid({
       // tips. The triangle legs run along the cell edges so the shape fits
       // exactly into each corner with zero bleed into neighbours.
       // t = leg length of each corner triangle = strokeWidth / sqrt(2)
-      const t = cellSize * 0.6 / Math.SQRT2;
+      const t = cellSize * 0.45 / Math.SQRT2;
       for (const [colorIdx, coords] of colorBuckets) {
         const color = pal[colorIdx - 1];
         if (!color) continue;
