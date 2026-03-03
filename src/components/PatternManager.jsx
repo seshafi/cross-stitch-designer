@@ -114,6 +114,100 @@ export default function PatternManager() {
     setShowExportMenu(false);
   };
 
+  const handleExportSVG = () => {
+    setShowExportMenu(false);
+    const { width, height, grid, palette, background, name } = state;
+    const cellSize = 10;
+    const pad = 24;
+    const legendRowH = 20;
+
+    const counts = {};
+    for (let i = 0; i < grid.length; i++) {
+      const v = grid[i];
+      if (v > 0) counts[v] = (counts[v] || 0) + 1;
+    }
+    const legend = palette
+      .map((c, i) => ({ ...c, count: counts[i + 1] || 0 }))
+      .filter(c => c.count > 0);
+
+    const gridW = width * cellSize;
+    const gridH = height * cellSize;
+    const legendH = legend.length > 0 ? pad + legend.length * legendRowH : 0;
+    const svgW = gridW + pad * 2;
+    const svgH = gridH + pad * 2 + legendH;
+
+    const parts = [];
+    parts.push(`<?xml version="1.0" encoding="UTF-8"?>`);
+    parts.push(`<svg xmlns="http://www.w3.org/2000/svg" width="${svgW}" height="${svgH}" viewBox="0 0 ${svgW} ${svgH}">`);
+    parts.push(`<title>${name}</title>`);
+
+    // Background
+    parts.push(`<rect x="${pad}" y="${pad}" width="${gridW}" height="${gridH}" fill="${background || '#ffffff'}"/>`);
+
+    // Cells grouped by color for compact output
+    const colorGroups = {};
+    for (let y = 0; y < height; y++) {
+      for (let x = 0; x < width; x++) {
+        const val = grid[y * width + x];
+        if (val > 0 && val <= palette.length) {
+          const hex = palette[val - 1].hex;
+          if (!colorGroups[hex]) colorGroups[hex] = [];
+          colorGroups[hex].push([x, y]);
+        }
+      }
+    }
+    for (const [hex, cells] of Object.entries(colorGroups)) {
+      parts.push(`<g fill="${hex}">`);
+      for (const [x, y] of cells) {
+        parts.push(`<rect x="${pad + x * cellSize}" y="${pad + y * cellSize}" width="${cellSize}" height="${cellSize}"/>`);
+      }
+      parts.push(`</g>`);
+    }
+
+    // Light grid lines
+    const lightPaths = [];
+    for (let x = 1; x < width; x++) {
+      if (x % 10 !== 0) lightPaths.push(`M${pad + x * cellSize},${pad}V${pad + gridH}`);
+    }
+    for (let y = 1; y < height; y++) {
+      if (y % 10 !== 0) lightPaths.push(`M${pad},${pad + y * cellSize}H${pad + gridW}`);
+    }
+    if (lightPaths.length) {
+      parts.push(`<path d="${lightPaths.join(' ')}" stroke="rgba(0,0,0,0.12)" stroke-width="0.5" fill="none"/>`);
+    }
+
+    // Heavy lines every 10
+    const heavyPaths = [];
+    for (let x = 0; x <= width; x += 10) heavyPaths.push(`M${pad + x * cellSize},${pad}V${pad + gridH}`);
+    for (let y = 0; y <= height; y += 10) heavyPaths.push(`M${pad},${pad + y * cellSize}H${pad + gridW}`);
+    parts.push(`<path d="${heavyPaths.join(' ')}" stroke="rgba(0,0,0,0.35)" stroke-width="1" fill="none"/>`);
+
+    // Border
+    parts.push(`<rect x="${pad}" y="${pad}" width="${gridW}" height="${gridH}" fill="none" stroke="rgba(0,0,0,0.6)" stroke-width="1.5"/>`);
+
+    // Legend
+    if (legend.length > 0) {
+      const ly = pad * 2 + gridH;
+      parts.push(`<g font-family="sans-serif" font-size="11">`);
+      legend.forEach((c, i) => {
+        const ry = ly + i * legendRowH;
+        parts.push(`<rect x="${pad}" y="${ry}" width="12" height="12" fill="${c.hex}" stroke="#bbb" stroke-width="0.5"/>`);
+        parts.push(`<text x="${pad + 18}" y="${ry + 10}" fill="#111"><tspan font-weight="bold">DMC ${c.dmc}</tspan> \u2014 ${c.name} (${c.count})</text>`);
+      });
+      parts.push(`</g>`);
+    }
+
+    parts.push(`</svg>`);
+
+    const blob = new Blob([parts.join('\n')], { type: 'image/svg+xml' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${name || 'pattern'}.svg`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   const handleExportPDF = () => {
     setShowExportMenu(false);
     const { width, height, grid, palette, background, name } = state;
@@ -252,7 +346,7 @@ export default function PatternManager() {
         {/* Export split button */}
         <div ref={exportMenuRef} style={{ position: 'relative', display: 'flex' }}>
           <button
-            onClick={handleExportJSON}
+            onClick={handleExportSVG}
             style={{ ...BTN, borderRadius: '4px 0 0 4px', borderRight: 'none' }}
           >
             Export
@@ -277,6 +371,12 @@ export default function PatternManager() {
               minWidth: 120,
               boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
             }}>
+              <button
+                onClick={handleExportSVG}
+                style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12 }}
+              >
+                SVG
+              </button>
               <button
                 onClick={handleExportJSON}
                 style={{ display: 'block', width: '100%', textAlign: 'left', padding: '7px 12px', fontSize: 12 }}
