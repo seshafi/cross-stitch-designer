@@ -120,29 +120,38 @@ export function useCanvasGrid({
     }
 
     if (vm === 'cross') {
-      // Cross mode: draw X stitches that fill perfectly into each cell corner.
-      // lineCap 'square' extends the stroke by lineWidth/2 beyond the endpoint
-      // in the line direction. By insetting the start/end points by that same
-      // amount (lineWidth / (2*√2) along each 45° diagonal) the cap extension
-      // lands exactly on the corner pixel with no bleed into neighbours.
-      const lw = Math.max(1.5, cellSize * 0.45);
-      const inset = lw / (2 * Math.SQRT2);
-      ctx.lineWidth = lw;
-      ctx.lineCap = 'square';
+      // Cross mode: each X arm is a filled hexagon with right-angle triangle
+      // tips. The triangle legs run along the cell edges so the shape fits
+      // exactly into each corner with zero bleed into neighbours.
+      // t = leg length of each corner triangle = strokeWidth / sqrt(2)
+      const t = cellSize * 0.6 / Math.SQRT2;
       for (const [colorIdx, coords] of colorBuckets) {
         const color = pal[colorIdx - 1];
         if (!color) continue;
-        ctx.strokeStyle = (overrides && overrides[color.dmc]) || color.hex;
+        ctx.fillStyle = (overrides && overrides[color.dmc]) || color.hex;
         ctx.beginPath();
         for (let i = 0; i < coords.length; i += 2) {
           const px = offsetX + coords[i] * cellSize;
           const py = offsetY + coords[i + 1] * cellSize;
-          ctx.moveTo(px + inset, py + inset);
-          ctx.lineTo(px + cellSize - inset, py + cellSize - inset);
-          ctx.moveTo(px + cellSize - inset, py + inset);
-          ctx.lineTo(px + inset, py + cellSize - inset);
+          const e = cellSize;
+          // Arm 1: top-left → bottom-right
+          ctx.moveTo(px,         py        ); // TL tip
+          ctx.lineTo(px + t,     py        ); // along top edge
+          ctx.lineTo(px + e,     py + e - t); // along right edge
+          ctx.lineTo(px + e,     py + e    ); // BR tip
+          ctx.lineTo(px + e - t, py + e    ); // along bottom edge
+          ctx.lineTo(px,         py + t    ); // along left edge
+          ctx.closePath();
+          // Arm 2: top-right → bottom-left
+          ctx.moveTo(px + e,     py        ); // TR tip
+          ctx.lineTo(px + e,     py + t    ); // along right edge
+          ctx.lineTo(px + t,     py + e    ); // along bottom edge
+          ctx.lineTo(px,         py + e    ); // BL tip
+          ctx.lineTo(px,         py + e - t); // along left edge
+          ctx.lineTo(px + e - t, py        ); // along top edge
+          ctx.closePath();
         }
-        ctx.stroke();
+        ctx.fill();
       }
     } else {
       // Pixel mode: filled squares + faint stitch marks when zoomed in
