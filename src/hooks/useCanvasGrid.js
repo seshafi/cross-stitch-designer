@@ -120,9 +120,15 @@ export function useCanvasGrid({
     }
 
     if (vm === 'cross') {
-      // Cross mode: draw X stitches corner-to-corner in thread color
-      ctx.lineWidth = Math.max(1.5, cellSize * 0.4);
-      ctx.lineCap = 'butt';
+      // Cross mode: draw X stitches that fill perfectly into each cell corner.
+      // lineCap 'square' extends the stroke by lineWidth/2 beyond the endpoint
+      // in the line direction. By insetting the start/end points by that same
+      // amount (lineWidth / (2*√2) along each 45° diagonal) the cap extension
+      // lands exactly on the corner pixel with no bleed into neighbours.
+      const lw = Math.max(1.5, cellSize * 0.45);
+      const inset = lw / (2 * Math.SQRT2);
+      ctx.lineWidth = lw;
+      ctx.lineCap = 'square';
       for (const [colorIdx, coords] of colorBuckets) {
         const color = pal[colorIdx - 1];
         if (!color) continue;
@@ -131,10 +137,10 @@ export function useCanvasGrid({
         for (let i = 0; i < coords.length; i += 2) {
           const px = offsetX + coords[i] * cellSize;
           const py = offsetY + coords[i + 1] * cellSize;
-          ctx.moveTo(px, py);
-          ctx.lineTo(px + cellSize, py + cellSize);
-          ctx.moveTo(px + cellSize, py);
-          ctx.lineTo(px, py + cellSize);
+          ctx.moveTo(px + inset, py + inset);
+          ctx.lineTo(px + cellSize - inset, py + cellSize - inset);
+          ctx.moveTo(px + cellSize - inset, py + inset);
+          ctx.lineTo(px + inset, py + cellSize - inset);
         }
         ctx.stroke();
       }
